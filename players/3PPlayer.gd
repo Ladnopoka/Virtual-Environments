@@ -8,9 +8,18 @@ const FRICTION = 2
 const JUMP_VELOCITY = 8
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity") # gravity from project settings 
 
+var mouse_position
+#@onready var base_camera = $Head/Camera3D
+@onready var base_camera = $Camera3D
+
+#@onready var model = $MeshInstance3D
+#@onready var model = $"."
+@onready var model = $Head
+
 func _physics_process(delta):
 	apply_gravity(delta)
 	movement(delta)
+	update_orientation()
 	apply_jump()
 	move_and_slide()
 	
@@ -51,3 +60,24 @@ func apply_jump():
 		if Input.is_action_just_pressed("ui_accept"):
 			velocity.y = JUMP_VELOCITY
 		
+func update_orientation():
+	# All the logic related to updating the character's orientation goes here
+	var space_state = get_world_3d().direct_space_state
+	mouse_position = get_viewport().get_mouse_position()
+	
+	print(mouse_position)
+
+	var ray_origin = base_camera.project_ray_origin(mouse_position)
+	var ray_end = ray_origin + base_camera.project_ray_normal(mouse_position) * 1000
+
+	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end); 
+	var intersection = space_state.intersect_ray(query)
+
+	if intersection.size() > 0:
+		var pos = intersection.position
+		var direction_to_pos = pos - model.global_position
+
+		if direction_to_pos.length() > 0.5:
+			direction_to_pos.y = 0
+			var look_at_pos = model.global_position + direction_to_pos
+			model.look_at(look_at_pos, Vector3(0, 1, 0))
